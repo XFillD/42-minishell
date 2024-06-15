@@ -6,7 +6,7 @@
 /*   By: yalechin <yalechin@student.42prague.com    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/08 10:31:55 by yalechin          #+#    #+#             */
-/*   Updated: 2024/06/15 12:11:11 by yalechin         ###   ########.fr       */
+/*   Updated: 2024/06/15 14:12:42 by yalechin         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,9 +58,9 @@ int	ft_check_quotes(t_program *program)
 	q2 = false;
 	while (program->input[x])
 	{
-		if (program->input[x] == SINGLE_QUOTE)
+		if (program->input[x] == SINGLE_QUOTE && !q2)
 			q1 = !q1;
-		if (program->input[x] == DOUBLE_QUOTE)
+		if (program->input[x] == DOUBLE_QUOTE && !q1)
 			q2 = !q2;
 		x++;
 	}
@@ -145,6 +145,7 @@ char	*ft_prepare_line(t_program *program)
 			{
 				new_line[y++] = ' ';
 				new_line[y++] = program->input[x++];
+				new_line[y++] = ' ';
 			}
 		}
 		else
@@ -157,11 +158,32 @@ char	*ft_prepare_line(t_program *program)
 
 int	ft_alloc(char *line, int x)
 {
-	int	count;
+	int		count;
+	bool	in_quote;
+	char	c;
 
 	count = 0;
-	while (line[x] != ' ' && line[x])
+	c = '?';
+	in_quote = false;
+	while ((line[x] != ' ' && line[x]) || (line[x] == ' ' && in_quote == 1
+			&& line[x]))
 	{
+		if (line[x] == DOUBLE_QUOTE && c != SINGLE_QUOTE)
+		{
+			if (c == DOUBLE_QUOTE)
+				c = '?';
+			else
+				c = DOUBLE_QUOTE;
+			in_quote = !in_quote;
+		}
+		if (line[x] == SINGLE_QUOTE && c != DOUBLE_QUOTE)
+		{
+			if (c == SINGLE_QUOTE)
+				c = '?';
+			else
+				c = SINGLE_QUOTE;
+			in_quote = !in_quote;
+		}
 		x++;
 		count++;
 	}
@@ -173,19 +195,37 @@ t_token	*new_token(char *new_line, int *x)
 {
 	t_token	*new_token;
 	int		y;
+	bool	in_quote;
+	char	c;
 
+	c = '?';
+	in_quote = false;
 	y = 0;
-	// printf("CHECK Len is %d\n", len);
-	// printf("CHECK X is %d\n", x);
-	// printf("CHECK P is %d\n", p);
 	new_token = (t_token *)malloc(sizeof(t_token));
 	if (!new_token)
 		exit(1);
 	new_token->token_str = (char *)malloc(sizeof(ft_alloc(new_line, *x) + 1));
 	if (!new_token->token_str)
 		exit(1);
-	while (new_line[*x] && new_line[*x] != ' ')
+	while ((new_line[*x] && new_line[*x] != ' ') || (new_line[*x]
+			&& new_line[*x] == ' ' && in_quote))
 	{
+		if (new_line[*x] == DOUBLE_QUOTE && c != SINGLE_QUOTE)
+		{
+			if (c == DOUBLE_QUOTE)
+				c = '?';
+			else
+				c = DOUBLE_QUOTE;
+			in_quote = !in_quote;
+		}
+		if (new_line[*x] == SINGLE_QUOTE && c != DOUBLE_QUOTE)
+		{
+			if (c == SINGLE_QUOTE)
+				c = '?';
+			else
+				c = SINGLE_QUOTE;
+			in_quote = !in_quote;
+		}
 		new_token->token_str[y++] = new_line[(*x)++];
 	}
 	new_token->token_str[y] = '\0';
