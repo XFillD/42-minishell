@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.h                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yana <yana@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: yalechin <yalechin@student.42prague.com    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/26 17:07:50 by yalechin          #+#    #+#             */
-/*   Updated: 2024/06/12 14:21:27 by yana             ###   ########.fr       */
+/*   Updated: 2024/06/16 14:01:59 by yalechin         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,13 +25,22 @@
 # include <sys/wait.h>
 # include <unistd.h>
 
+# define PIPE_T 1
+# define INPUT 2
+# define OUTPUT 3
+# define INPUT_D 4
+# define OUTPUT_D 5
+# define D_SIGN_T 6
+# define STR 7
+# define EMPTY 8
+# define CMD 9
+
 # define DOUBLE_QUOTE '\"'
 # define SINGLE_QUOTE '\''
 
 # define RED_IN '<'
 # define RED_OUT '>'
-#define PIPE '|'
-#define D_SIGN '$'
-
+# define PIPE '|'
+# define D_SIGN '$'
 
 #endif
