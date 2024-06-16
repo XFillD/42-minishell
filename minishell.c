@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yalechin <yalechin@student.42prague.com    +#+  +:+       +#+        */
+/*   By: fhauba <fhauba@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/08 10:31:55 by yalechin          #+#    #+#             */
-/*   Updated: 2024/06/16 14:02:33 by yalechin         ###   ########.fr       */
+/*   Updated: 2024/06/16 14:37:53 by fhauba           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -87,17 +87,18 @@ int	ft_check_quotes(t_program *program)
 	return (1);
 }
 
-bool	ft_check_for_special(int c)
+bool ft_check_for_special(int c)
 {
-	if (c == RED_IN)
-		return (true);
-	if (c == RED_OUT)
-		return (true);
-	if (c == D_SIGN)
-		return (true);
-	if (c == PIPE)
-		return (true);
-	return (false);
+	switch (c)
+	{
+		case RED_IN:
+		case RED_OUT:
+		case D_SIGN:
+		case PIPE:
+			return true;
+		default:
+			return false;
+	}
 }
 
 bool	ft_check_for_double(int c1, int c2)
@@ -109,22 +110,15 @@ bool	ft_check_for_double(int c1, int c2)
 	return (false);
 }
 
-int	ft_check_for_cmd(char *token_str)
-{
-	if (ft_strcmp(token_str, "echo") == 0)
-		return (0);
-	else if (ft_strcmp(token_str, "pwd") == 0)
-		return (0);
-	else if (ft_strcmp(token_str, "unset") == 0)
-		return (0);
-	else if (ft_strcmp(token_str, "cd") == 0)
-		return (0);
-	else if (ft_strcmp(token_str, "exit") == 0)
-		return (0);
-	else if (ft_strcmp(token_str, "export") == 0)
-		return (0);
-	else
-		return (1);
+int ft_check_for_cmd(char *token_str) {
+	char *commands[] = {"echo", "pwd", "unset", "cd", "exit", "export"};
+	int num_commands = sizeof(commands) / sizeof(commands[0]);
+	for (int i = 0; i < num_commands; i++) {
+		if (ft_strcmp(token_str, commands[i]) == 0) {
+			return 0;
+		}
+	}
+	return 1;
 }
 
 void	ft_token_type(t_program *program)
