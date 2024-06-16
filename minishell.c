@@ -6,7 +6,7 @@
 /*   By: yalechin <yalechin@student.42prague.com    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/08 10:31:55 by yalechin          #+#    #+#             */
-/*   Updated: 2024/06/15 14:12:42 by yalechin         ###   ########.fr       */
+/*   Updated: 2024/06/16 14:02:33 by yalechin         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,6 +29,20 @@ typedef struct s_program
 	t_token			*first;
 
 }					t_program;
+
+int	ft_strcmp(char *s1, char *s2)
+{
+	int	x;
+
+	x = 0;
+	while (s1[x])
+	{
+		if (s1[x] != s2[x])
+			return (s1[x] - s2[x]);
+		x++;
+	}
+	return (0);
+}
 
 int	ft_is_in_str(const char *str, int ch)
 {
@@ -93,6 +107,56 @@ bool	ft_check_for_double(int c1, int c2)
 	if (c1 == RED_OUT && c2 == RED_OUT)
 		return (true);
 	return (false);
+}
+
+int	ft_check_for_cmd(char *token_str)
+{
+	if (ft_strcmp(token_str, "echo") == 0)
+		return (0);
+	else if (ft_strcmp(token_str, "pwd") == 0)
+		return (0);
+	else if (ft_strcmp(token_str, "unset") == 0)
+		return (0);
+	else if (ft_strcmp(token_str, "cd") == 0)
+		return (0);
+	else if (ft_strcmp(token_str, "exit") == 0)
+		return (0);
+	else if (ft_strcmp(token_str, "export") == 0)
+		return (0);
+	else
+		return (1);
+}
+
+void	ft_token_type(t_program *program)
+{
+	t_token	*temp;
+	t_token	*head;
+
+	temp = program->first;
+	head = temp;
+	while (temp != NULL)
+	{
+		if (ft_strcmp(temp->token_str, "") == 0)
+			temp->token_type = EMPTY;
+		else if (ft_strcmp(temp->token_str, "|") == 0)
+			temp->token_type = PIPE_T;
+		else if (ft_strcmp(temp->token_str, "<") == 0)
+			temp->token_type = INPUT;
+		else if (ft_strcmp(temp->token_str, ">") == 0)
+			temp->token_type = OUTPUT;
+		else if (ft_strcmp(temp->token_str, "<<") == 0)
+			temp->token_type = INPUT_D;
+		else if (ft_strcmp(temp->token_str, ">>") == 0)
+			temp->token_type = OUTPUT_D;
+		else if (ft_strcmp(temp->token_str, "$") == 0)
+			temp->token_type = D_SIGN_T;
+		else if (ft_check_for_cmd(temp->token_str) == 0)
+			temp->token_type = CMD;
+		else
+			temp->token_type = STR;
+		temp = temp->next;
+	}
+	program->first = head;
 }
 
 // allocate memory, create new line and add spaces for better tokenization
@@ -266,8 +330,81 @@ t_token	*ft_tokenization(t_program *program)
 }
 
 // organize tokens into logical groups based on possible commands
-// consider adding types to tokens here a before
+
 // before exec check the lists of tokens again
+// return 1 if match
+int	is_redirection_operator(t_token *token)
+{
+	return (ft_strcmp(token->token_str, ">") == 0 || ft_strcmp(token->token_str,
+			">>") == 0 || ft_strcmp(token->token_str, "<") == 0
+		|| ft_strcmp(token->token_str, "<<") == 0);
+}
+
+int	is_pipe(t_token *token)
+{
+	return (ft_strcmp(token->token_str, "|") == 0);
+}
+
+int	is_variable(t_token *token)
+{
+	return (token->token_str[0] == '$');
+}
+
+int	is_valid_variable_name(char *str)
+{
+	if (ft_strcmp(str, "home") == 0)
+		return (1);
+	if (ft_strcmp(str, "user") == 0)
+		return (1);
+	return (0);
+}
+
+int	ft_check_tokens(t_program *program)
+{
+	t_token	*temp;
+	t_token	*head;
+
+	temp = program->first;
+	head = temp;
+	while (temp != NULL)
+	{
+		if (is_redirection_operator(temp) && (!temp->next
+				|| is_redirection_operator(temp->next)))
+		{
+			printf("REDIRECTION ERROR\n");
+			return (0);
+		}
+		if (is_pipe(temp) && (!temp->prev || !temp->next || is_pipe(temp->prev)
+				|| is_pipe(temp->next)))
+		{
+			printf("PIPE ERROR\n");
+			return (0);
+		}
+		/* maybe not necessary??? to much to check????
+		if (is_variable(temp) && !is_valid_variable_name(temp->token_str))
+		{
+			printf("VARIABLE ERROR\n");
+			return (0);
+		}*/
+		// what about echo???
+		temp = temp->next;
+	}
+	program->first = head;
+	return (1);
+}
+
+void	ft_free_program(t_program *program)
+{
+	/*int	x;
+	x = 0;
+	while (program->first)
+	{
+		free(program->first);
+		x++;
+	}*/
+	free(program->input);
+	free(program);
+}
 
 int	main(int ac, char **av, char **envp)
 {
@@ -291,15 +428,22 @@ int	main(int ac, char **av, char **envp)
 		printf("Final line: %s\n", program->split_line);
 		program->first = ft_tokenization(program);
 
-		while (program->first != NULL)
+		t_token *temp = program->first;
+		ft_token_type(program);
+
+		while (temp != NULL)
 		{
-			printf("TOKEN is: %s\n", program->first->token_str);
-			program->first = program->first->next;
+			printf("TOKEN is: [%s] token type is [%d]\n", temp->token_str,
+				temp->token_type);
+			temp = temp->next;
 		}
 
+		if (ft_check_tokens(program))
+			printf("ALL TOKEN GOOD!\n");
+
 		// ft_execute(program);
-		// ft_debug(program);
-		// free_program(program);
+
+		ft_free_program(program);
 	}
 	return (0);
 }
