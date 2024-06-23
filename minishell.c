@@ -6,7 +6,7 @@
 /*   By: yalechin <yalechin@student.42prague.com    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/08 10:31:55 by yalechin          #+#    #+#             */
-/*   Updated: 2024/06/23 17:11:37 by yalechin         ###   ########.fr       */
+/*   Updated: 2024/06/23 20:21:05 by yalechin         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,7 +36,7 @@ typedef struct s_program
 	t_token			*first;
 	//char			**envp;
 	t_envp *envp; 
-	char			**paths;
+	//char			**paths;
 
 }					t_program;
 
@@ -110,10 +110,10 @@ int	ft_check_quotes(t_program *program)
 	}
 	if (!q1 && !q2)
 	{
-		printf("ALL GOOD - QUOTES MATCH\n");
+		//printf("ALL GOOD - QUOTES MATCH\n");
 		return (0);
 	}
-	printf("NOT GOOD - QUOTES DO NOT MATCH\n");
+	//printf("NOT GOOD - QUOTES DO NOT MATCH\n");
 	return (1);
 }
 
@@ -428,82 +428,42 @@ int	ft_check_tokens(t_program *program)
 	return (1);
 }
 
-void	free_matrix(char **matrix)
-{
-	size_t	i;
-
-	i = 0;
-	if (!matrix)
-		return ;
-	while (matrix[i])
-	{
-		free(matrix[i]);
-		matrix[i] = NULL;
-		i += 1;
-	}
-	free(matrix);
-	matrix = NULL;
-}
 
 
-void clear_token_list(t_program *program) {
-    t_token *current = program->first;
+
+void clear_token_list(t_token *head) {
+    t_token *current = head;
     t_token *next;
 
     // Clear the token linked list
     while (current != NULL) {
         next = current->next;
-        free(current->token_str);  // Free the string if it was dynamically allocated
+        free(current->token_str);  
         free(current);
         current = next;
     }
-    program->first = NULL;  // Set the first pointer to NULL after clearing the list
 
-    // Clear the envp linked list
-    t_envp *current2 = program->envp;
-    t_envp *next2;
-
-    while (current2 != NULL) {
-        next2 = current2->next;
-        free(current2->var_name);  // Free the string if it was dynamically allocated
-        free(current2);
-        current2 = next2;
-    }
-    program->envp = NULL;  // Set the envp pointer to NULL after clearing the list
 }
 
 void ft_free_program(t_program *program) {
-    clear_token_list(program);
+    //clear_token_list(program);
+	t_envp *current = program->envp;
+    t_envp *next;
+
+    // Clear the token linked list
+    while (current != NULL) {
+        next = current->next;
+        free(current->var_name);  
+        free(current);
+        current = next;
+    }
+
     free(program->input);
-    //free(program->split_line); // Make sure to free split_line if it is dynamically allocated
-    //free_matrix(program->paths);      // Free paths if it is dynamically allocated
+    free(program->split_line); 
+
     free(program);
 }
 
-
-// stores the list of envp in the program structure
-/*char	**split_envp(char **envp)
-{
-	int		x;
-	char	**envp_arr;
-
-	x = 0;
-	while (envp[x])
-	{
-		x++;
-	}
-	envp_arr = (char **)malloc(sizeof(char *) * x + 1);
-	if (!envp_arr)
-		return (NULL);
-	x = 0;
-	while (envp[x])
-	{
-		envp_arr[x] = ft_strdup(envp[x]);
-		x++;
-	}
-	// free smth?
-	return (envp_arr);
-}*/
 
 
 t_envp	*v_lstlast(t_envp *node)
@@ -776,7 +736,7 @@ int	cmd_cd(char *path, t_program *program)
 	if (path == NULL || streq(path, "~"))
 	{
 		update_oldpwd(&temp[0], program);
-		printf("cmd tady\n");
+		//printf("cmd tady\n");
 		chdir(getenv("HOME"));
 		update_pwd(program);
 
@@ -788,7 +748,7 @@ int	cmd_cd(char *path, t_program *program)
 	{
 		update_oldpwd(&temp[0], program);
 		update_pwd(program);
-		printf("cmd tadyyyyy\n");
+		//printf("cmd tadyyyyy\n");
 		cmd_pwd();
 		return (EXIT_SUCCESS);
 	}
@@ -821,7 +781,7 @@ void	ft_execute(t_program *program)
 		{
 			if (ft_strcmp(temp->token_str, "cd") == 0)
 			{
-				printf("CD COMMAND FOUND\n");
+				//printf("CD COMMAND FOUND\n");
 				call_cmd_cd(temp->next->token_str, program);
 			}
 			else if (ft_strcmp(temp->token_str, "echo") == 0)
@@ -830,7 +790,7 @@ void	ft_execute(t_program *program)
 			}
 			else if (ft_strcmp(temp->token_str, "pwd") == 0)
 			{
-				printf("PWD COMMAND FOUND\n");
+				//printf("PWD COMMAND FOUND\n");
 				cmd_pwd();
 			}
 			else if (ft_strcmp(temp->token_str, "export") == 0)
@@ -868,7 +828,15 @@ int	main(int ac, char **av, char **envp)
 	}
 
 	program = malloc(sizeof(t_program));
+	if(!program)
+		exit(1);
 	program->input = NULL;
+	program->split_line = NULL; 
+	program->first = NULL; 
+	program->envp = NULL; 
+	program->envp = ft_init_envp_list(envp);
+
+
 	//program->envp = NULL;
 
 	//program->envp = ft_store_envp(envp);
@@ -896,10 +864,10 @@ int	main(int ac, char **av, char **envp)
 		// printf("Final line: %s\n", program->split_line);
 		program->first = ft_tokenization(program);
 
-		t_token *temp = program->first;
+		//t_token *temp = program->first;
 		ft_token_type(program);
 
-		while (temp != NULL)
+		/*while (temp != NULL)
 		{
 			printf("TOKEN is: [%s] token type is [%d]\n", temp->token_str,
 				temp->token_type);
@@ -907,11 +875,13 @@ int	main(int ac, char **av, char **envp)
 		}
 
 		if (ft_check_tokens(program))
-			printf("ALL TOKEN GOOD!\n");
+			printf("ALL TOKEN GOOD!\n");*/
 
 		ft_execute(program);
-
-		ft_free_program(program);
+		clear_token_list(program->first);
+		program->first = NULL;
+		
 	}
+	ft_free_program(program);
 	return (0);
 }
