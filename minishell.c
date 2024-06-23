@@ -482,12 +482,62 @@ void	ft_create_paths(t_program *program)
 		x++;
 	}
 	// testing print - delete later
-	x = 0;
-	while (program->paths[x])
+	// x = 0;
+	// while (program->paths[x])
+	// {
+	// 	printf("%s\n", program->paths[x]);
+	// 	x++;
+	// }
+}
+
+static int	call_cmd_cd(char *dest, t_program *program)
+{
+		return (cmd_cd(dest, program));
+}
+
+void ft_execute (t_program *program)
+{
+	t_token *temp = program->first;
+	int x = 0;
+	while (temp != NULL)
 	{
-		printf("%s\n", program->paths[x]);
-		x++;
+		if (temp->token_type == CMD)
+		{
+				if ( ft_strcmp(temp->token_str, "cd") == 0)
+				{ 
+					printf("CD COMMAND FOUND\n");
+					call_cmd_cd(temp->next->token_str, program);
+				}
+				else if ( ft_strcmp(temp->token_str, "echo") == 0)
+				{
+					printf("ECHO COMMAND FOUND\n");
+				}
+				else if ( ft_strcmp(temp->token_str, "pwd") == 0)
+				{
+					printf("PWD COMMAND FOUND\n");
+				}
+				else if ( ft_strcmp(temp->token_str, "export") == 0)
+				{
+					printf("EXPORT COMMAND FOUND\n");
+				}
+				else if ( ft_strcmp(temp->token_str, "unset") == 0)
+				{
+					printf("UNSET COMMAND FOUND\n");
+				}
+				else if ( ft_strcmp(temp->token_str, "env") == 0)
+				{
+					printf("ENV COMMAND FOUND\n");
+				}
+				else if ( ft_strcmp(temp->token_str, "exit") == 0)
+				{
+					printf("EXIT COMMAND FOUND\n");
+				}
+			}
+		temp = temp->next;
 	}
+}
+{
+
 }
 
 int	main(int ac, char **av, char **envp)
@@ -514,11 +564,11 @@ int	main(int ac, char **av, char **envp)
 		x++;
 	}
 	char *path = ft_find_path(program);
-	printf("PATH FOUND: %s\n", path);
+	// printf("PATH FOUND: %s\n", path);
 
 	ft_create_paths(program);
 
-	/*while (1)
+	while (1)
 	{
 		program->input = readline("minishell> ");
 		if (!program->input)
@@ -528,7 +578,7 @@ int	main(int ac, char **av, char **envp)
 		add_history(program->input);
 		ft_check_quotes(program);
 		program->split_line = ft_prepare_line(program);
-		printf("Final line: %s\n", program->split_line);
+		// printf("Final line: %s\n", program->split_line);
 		program->first = ft_tokenization(program);
 
 		t_token *temp = program->first;
@@ -544,9 +594,9 @@ int	main(int ac, char **av, char **envp)
 		if (ft_check_tokens(program))
 			printf("ALL TOKEN GOOD!\n");
 
-		// ft_execute(program);
+		 ft_execute(program);
 
 		ft_free_program(program);
-	}*/
+	}
 	return (0);
 }
