@@ -6,7 +6,7 @@
 /*   By: yalechin <yalechin@student.42prague.com    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/08 10:31:55 by yalechin          #+#    #+#             */
-/*   Updated: 2024/06/16 14:02:33 by yalechin         ###   ########.fr       */
+/*   Updated: 2024/06/22 13:53:52 by yalechin         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,9 +27,12 @@ typedef struct s_program
 	char			*input;
 	char			*split_line;
 	t_token			*first;
+	char			**envp;
+	char			**paths;
 
 }					t_program;
 
+// compare strings
 int	ft_strcmp(char *s1, char *s2)
 {
 	int	x;
@@ -44,6 +47,7 @@ int	ft_strcmp(char *s1, char *s2)
 	return (0);
 }
 
+// check if character is in the string
 int	ft_is_in_str(const char *str, int ch)
 {
 	int	x;
@@ -87,6 +91,7 @@ int	ft_check_quotes(t_program *program)
 	return (1);
 }
 
+// check is special character
 bool	ft_check_for_special(int c)
 {
 	if (c == RED_IN)
@@ -100,6 +105,7 @@ bool	ft_check_for_special(int c)
 	return (false);
 }
 
+// check if character has a double
 bool	ft_check_for_double(int c1, int c2)
 {
 	if (c1 == RED_IN && c2 == RED_IN)
@@ -109,6 +115,7 @@ bool	ft_check_for_double(int c1, int c2)
 	return (false);
 }
 
+// check ig command
 int	ft_check_for_cmd(char *token_str)
 {
 	if (ft_strcmp(token_str, "echo") == 0)
@@ -127,6 +134,7 @@ int	ft_check_for_cmd(char *token_str)
 		return (1);
 }
 
+// add token types to the token list
 void	ft_token_type(t_program *program)
 {
 	t_token	*temp;
@@ -159,10 +167,7 @@ void	ft_token_type(t_program *program)
 	program->first = head;
 }
 
-// allocate memory, create new line and add spaces for better tokenization
-// consider special chars
-
-// handle $ somehow????
+// create a new line with spaces for the subsequent tokenization
 char	*ft_prepare_line(t_program *program)
 {
 	char	*new_line;
@@ -220,6 +225,7 @@ char	*ft_prepare_line(t_program *program)
 	return (new_line);
 }
 
+// allocate memory for token str
 int	ft_alloc(char *line, int x)
 {
 	int		count;
@@ -255,6 +261,7 @@ int	ft_alloc(char *line, int x)
 	return (count);
 }
 
+// create a token from the line
 t_token	*new_token(char *new_line, int *x)
 {
 	t_token	*new_token;
@@ -296,6 +303,7 @@ t_token	*new_token(char *new_line, int *x)
 	return (new_token);
 }
 
+// create the list of tokens
 t_token	*ft_tokenization(t_program *program)
 {
 	t_token	*prev;
@@ -329,10 +337,7 @@ t_token	*ft_tokenization(t_program *program)
 	return (head);
 }
 
-// organize tokens into logical groups based on possible commands
-
-// before exec check the lists of tokens again
-// return 1 if match
+// check if redirection symbol
 int	is_redirection_operator(t_token *token)
 {
 	return (ft_strcmp(token->token_str, ">") == 0 || ft_strcmp(token->token_str,
@@ -340,16 +345,19 @@ int	is_redirection_operator(t_token *token)
 		|| ft_strcmp(token->token_str, "<<") == 0);
 }
 
+// check if pipe symbol
 int	is_pipe(t_token *token)
 {
 	return (ft_strcmp(token->token_str, "|") == 0);
 }
 
+// check if variable symbol
 int	is_variable(t_token *token)
 {
 	return (token->token_str[0] == '$');
 }
 
+// this is probably unnecessary as there are too many - delete later
 int	is_valid_variable_name(char *str)
 {
 	if (ft_strcmp(str, "home") == 0)
@@ -359,6 +367,7 @@ int	is_valid_variable_name(char *str)
 	return (0);
 }
 
+// checks token for pipe and redirections error
 int	ft_check_tokens(t_program *program)
 {
 	t_token	*temp;
@@ -406,16 +415,110 @@ void	ft_free_program(t_program *program)
 	free(program);
 }
 
+// stores the list of envp in the program structure
+char	**ft_store_envp(char **envp)
+{
+	int		x;
+	char	**envp_arr;
+
+	x = 0;
+	while (envp[x])
+	{
+		x++;
+	}
+	envp_arr = (char **)malloc(sizeof(char *) * x + 1);
+	if (!envp_arr)
+		return (NULL);
+	x = 0;
+	while (envp[x])
+	{
+		envp_arr[x] = ft_strdup(envp[x]);
+		x++;
+	}
+	// free smth?
+	return (envp_arr);
+}
+
+// find PATH in envp
+char	*ft_find_path(t_program *program)
+{
+	int	x;
+	int	len;
+
+	x = 0;
+	while (program->envp[x])
+	{
+		if (ft_strncmp(program->envp[x], "PATH=", 5) == 0)
+		{
+			len = ft_strlen(program->envp[x]) - 5;
+			return (ft_substr(program->envp[x], 5, len));
+		}
+		x++;
+	}
+	return (NULL);
+	// not sure what to return if path not found
+}
+
+// create paths from PATH - add / when necessary
+void	ft_create_paths(t_program *program)
+{
+	char	*path;
+	char	*temp;
+	int		x;
+	int		len;
+
+	x = 0;
+	path = ft_find_path(program);
+	program->paths = ft_split(path, ':');
+	while (program->paths[x])
+	{
+		len = ft_strlen(program->paths[x]) - 1;
+		if (program->paths[x][len] != '/')
+		{
+			temp = ft_strjoin(program->paths[x], "/");
+			free(program->paths[x]);
+			program->paths[x] = temp;
+		}
+		x++;
+	}
+	// testing print - delete later
+	x = 0;
+	while (program->paths[x])
+	{
+		printf("%s\n", program->paths[x]);
+		x++;
+	}
+}
+
 int	main(int ac, char **av, char **envp)
 {
 	(void)ac;
 	(void)av;
-	(void)envp;
 	t_program *program;
 
-	program = malloc(sizeof(t_program));
+	if (ac != 1 || av[1])
+	{
+		printf("ERROR: wrong number of arguments!");
+		exit(0);
+	}
 
-	while (1)
+	program = malloc(sizeof(t_program));
+	program->input = NULL;
+	program->envp = NULL;
+
+	program->envp = ft_store_envp(envp);
+	int x = 0;
+	while (program->envp[x])
+	{
+		printf("%s\n", program->envp[x]);
+		x++;
+	}
+	char *path = ft_find_path(program);
+	printf("PATH FOUND: %s\n", path);
+
+	ft_create_paths(program);
+
+	/*while (1)
 	{
 		program->input = readline("minishell> ");
 		if (!program->input)
@@ -444,6 +547,6 @@ int	main(int ac, char **av, char **envp)
 		// ft_execute(program);
 
 		ft_free_program(program);
-	}
+	}*/
 	return (0);
 }
