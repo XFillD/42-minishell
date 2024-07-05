@@ -14,7 +14,7 @@ bool	is_onid(char *str, char c)
 	return (false);
 }
 
-static int	single_export(t_data *data)
+static int	single_export(t_program *program)
 {
 	t_vlst	*temp;
 
@@ -36,7 +36,7 @@ static int	export_bad_identifier(char *identifier)
 	return (EXIT_FAILURE);
 }
 
-static void	loop_and_export(char *var_name, t_data *data)
+static void	loop_and_export(char *var_name, t_program *program)
 {
 	t_vlst	*temp;
 
@@ -52,13 +52,13 @@ static void	loop_and_export(char *var_name, t_data *data)
 	}
 }
 
-int	cmd_export(t_statement *statement, t_data *data)
+int	cmd_export(t_statement *statement, t_program *program)
 {
 	int		exit_status;
 	size_t	i;
 
 	if (statement->argc == 1)
-		return (single_export(data));
+		return (single_export(program));
 	exit_status = EXIT_SUCCESS;
 	i = 0;
 	while (statement->argv[++i])
@@ -67,11 +67,11 @@ int	cmd_export(t_statement *statement, t_data *data)
 			exit_status = export_bad_identifier(statement->argv[i]);
 		else if (is_onstr(statement->argv[i], '='))
 		{
-			save_user_vars(statement->argv[i], &data->envp_lst, true);
+			save_user_vars(statement->argv[i], &program->envp_lst, true);
 			continue ;
 		}
 		else
-			loop_and_export(statement->argv[i], data);
+			loop_and_export(statement->argv[i], program);
 	}
 	return (exit_status);
 }

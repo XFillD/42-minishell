@@ -7,15 +7,15 @@ static void	invalid_identifer(char *var_name)
 	ft_putendl_fd("\': not a valid identifier", STDERR_FILENO);
 }
 
-int	unset_var(char *var_name, t_vlst **head)
+int	unset_var(char *var_name, t_envp **head)
 {
-	t_vlst	*temp;
-	t_vlst	*next_node;
+	t_envp	*temp;
+	t_envp	*next_node;
 
 	temp = *head;
 	if (ft_strrchr(var_name, '='))
 	{
-		invalid_identifer(var_name);
+		//invalid_identifer(var_name);
 		return (EXIT_FAILURE);
 	}
 	while (temp && temp->next != NULL)

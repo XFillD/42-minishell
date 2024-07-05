@@ -8,7 +8,7 @@ static void	exit_non_numeric_arg(void)
 	ft_putendl_fd(EXIT_NON_NUMERIC_ARG, STDERR_FILENO);
 }
 
-void	cmd_exit(t_statement *s, t_data *data)
+void	cmd_exit(t_statement *s, t_program *program)
 {
 	ft_putendl_fd("exit", STDOUT_FILENO);
 	if (s->argc == 2)

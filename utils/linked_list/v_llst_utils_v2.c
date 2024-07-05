@@ -35,7 +35,7 @@ t_vlst	*v_new_node(char *var_name, char *var_value, bool is_exported)
 	return (new_node);
 }
 
-t_vlst	*v_lstlast(t_vlst *node)
+t_envp	*v_lstlast(t_envp *node)
 {
 	while (node)
 	{
@@ -46,9 +46,9 @@ t_vlst	*v_lstlast(t_vlst *node)
 	return (node);
 }
 
-void	v_lstadd_back(t_vlst **head, t_vlst *new)
+void	v_lstadd_back(t_envp **head, t_envp *new)
 {
-	t_vlst	*temp;
+	t_envp	*temp;
 
 	if (head)
 	{
