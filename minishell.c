@@ -6,7 +6,7 @@
 /*   By: yalechin <yalechin@student.42prague.com    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/08 10:31:55 by yalechin          #+#    #+#             */
-/*   Updated: 2024/06/23 20:21:05 by yalechin         ###   ########.fr       */
+/*   Updated: 2024/07/06 14:32:01 by yalechin         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,13 +34,140 @@ typedef struct s_program
 	char			*input;
 	char			*split_line;
 	t_token			*first;
-	//char			**envp;
+	char			**envp_origin;
 	t_envp *envp; 
 	//char			**paths;
 
 }					t_program;
 
+char **ft_token_list_to_array(t_token *token_list) {
+    size_t count = 0;
+    t_token *temp = token_list;
 
+    // Count the number of tokens in the linked list
+    while (temp) {
+        count++;
+        temp = temp->next;
+    }
+
+    // Allocate memory for the array of strings (plus one for the NULL terminator)
+    char **argv = malloc((count + 1) * sizeof(char *));
+    if (!argv) {
+        return NULL;
+    }
+
+    // Copy the tokens from the linked list to the array
+    size_t i = 0;
+    temp = token_list;
+    while (temp) {
+        argv[i] = strdup(temp->token_str);
+        if (!argv[i]) {
+            // Handle memory allocation failure
+            for (size_t j = 0; j < i; j++) {
+                free(argv[j]);
+            }
+            free(argv);
+            return NULL;
+        }
+        i++;
+        temp = temp->next;
+    }
+    argv[i] = NULL;  // Null-terminate the array
+
+    return argv;
+}
+
+char	**ft_find_paths(t_program *program)
+{
+	t_envp *temp = program->envp; 
+	
+	while (temp)
+	{
+		if (ft_strncmp(program->envp->var_name, "PATH=", 5) == 0)
+			return (ft_split(temp->var_value, ':'));
+		else 
+			return (NULL);
+		temp = temp->next; 
+	}
+
+	return (NULL); 
+}
+
+char *ft_create_paths(char *cmd, char **paths)
+{
+	int		x;
+	char	*bin;
+	char	*temp;
+
+	if(!paths)
+		return (NULL); 
+
+	x = 0;
+
+	while(paths[x])
+	{
+		temp = ft_strjoin(paths[x], "/"); 
+		bin = ft_strjoin(temp, cmd); 
+		free(temp); 
+		if(access(bin, F_OK | X_OK) == 0)
+			return (bin); 
+		free(bin); 
+		x++; 
+	}
+	return (NULL); 
+}
+
+bool	ft_is_absolute_path(t_token *token)
+{
+	if (token->token_str[0] == '/')
+		return (true);
+	return (false);
+}
+
+//exit and free ? 
+
+void ft_path_exec(t_program *program)
+{
+
+	char *bin;
+	char **paths; 
+	t_token *temp = program->first; 
+
+	char **argv;
+
+    argv = ft_token_list_to_array(program->first);
+    if (!argv) {
+        perror("token_list_to_array");
+        exit(1);
+    }
+
+	bin = program->first->token_str; 
+	paths = ft_find_paths(program); 
+	if (ft_is_absolute_path(temp))
+	{
+		if (execve(bin, argv, program->envp_origin) == -1)
+		{
+			printf("EXEC ERROR IN PATH EXEC\n"); 
+		}
+			//exit_and_free_matrix(paths, temp->token_str[0], 127);
+		//exit_and_free_matrix(paths, NULL, EXIT_SUCCESS);
+		return ;
+	}
+	bin = ft_create_paths(temp->token_str, paths);
+	if (bin == NULL)
+	{
+		//cmd_not_found(statement->argv[0]);
+		//exit_and_free_matrix(paths, NULL, 127);
+		printf("ERROR IN BIN IN EXEC\n"); 
+	}
+	if (execve(bin, argv, program->envp_origin) == -1)
+	{
+		free(bin);
+		//exit_and_free_matrix(paths, statement->argv[0], 127);
+	}
+	free(bin);
+	//exit_and_free_matrix(paths, NULL, EXIT_SUCCESS);
+}
 
 bool	streq(char *str1, char *str2)
 {
@@ -810,15 +937,17 @@ void	ft_execute(t_program *program)
 				printf("EXIT COMMAND FOUND\n");
 			}
 		}
+		else 
+		{
+			//printf("EXEC PATH\n");
+			ft_path_exec(program);
+		}
 		temp = temp->next;
 	}
 }
 
 int	main(int ac, char **av, char **envp)
 {
-	(void)ac;
-	(void)av;
-	(void)envp; 
 	t_program *program;
 
 	if (ac != 1 || av[1])
@@ -835,6 +964,7 @@ int	main(int ac, char **av, char **envp)
 	program->first = NULL; 
 	program->envp = NULL; 
 	program->envp = ft_init_envp_list(envp);
+	program->envp_origin = envp; 
 
 
 	//program->envp = NULL;
