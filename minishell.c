@@ -6,7 +6,7 @@
 /*   By: yalechin <yalechin@student.42prague.com    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/08 10:31:55 by yalechin          #+#    #+#             */
-/*   Updated: 2024/07/06 14:32:01 by yalechin         ###   ########.fr       */
+/*   Updated: 2024/07/07 18:01:01 by yalechin         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,10 +35,48 @@ typedef struct s_program
 	char			*split_line;
 	t_token			*first;
 	char			**envp_origin;
+	int exit_status; 
 	t_envp *envp; 
 	//char			**paths;
 
 }					t_program;
+
+int	exit_status;
+
+void	ft_child_signals(int signum)
+{
+	if (signum == SIGINT)
+	{
+		ft_putchar_fd('\n', STDOUT_FILENO);
+		exit_status = 130;
+		exit(130);
+	}
+}
+
+void	ft_s_handler(int signum)
+{
+	if (signum == SIGINT)
+	{
+		ft_putchar_fd('\n', STDOUT_FILENO);
+		rl_on_new_line();
+		rl_replace_line("", 0);
+		rl_redisplay();
+		exit_status = 130;
+	}
+}
+
+void ft_config_signals(void)
+{
+	struct sigaction s;
+
+	s.sa_handler = &ft_s_handler; 
+	s.sa_flags = SA_RESTART;
+    sigemptyset(&s.sa_mask);
+    sigaddset(&s.sa_mask, SIGINT);
+    sigaction(SIGINT, &s, NULL);
+    signal(SIGQUIT, SIG_IGN);
+
+}
 
 char **ft_token_list_to_array(t_token *token_list) {
     size_t count = 0;
@@ -83,13 +121,10 @@ char	**ft_find_paths(t_program *program)
 	
 	while (temp)
 	{
-		if (ft_strncmp(program->envp->var_name, "PATH=", 5) == 0)
+		if ((ft_strncmp(temp->var_name, "PATH", 4)) == 0)
 			return (ft_split(temp->var_value, ':'));
-		else 
-			return (NULL);
 		temp = temp->next; 
 	}
-
 	return (NULL); 
 }
 
@@ -98,6 +133,8 @@ char *ft_create_paths(char *cmd, char **paths)
 	int		x;
 	char	*bin;
 	char	*temp;
+
+
 
 	if(!paths)
 		return (NULL); 
@@ -876,7 +913,7 @@ int	cmd_cd(char *path, t_program *program)
 		update_oldpwd(&temp[0], program);
 		update_pwd(program);
 		//printf("cmd tadyyyyy\n");
-		cmd_pwd();
+		//cmd_pwd();
 		return (EXIT_SUCCESS);
 	}
 	return (print_perror_msg(path));
@@ -894,8 +931,23 @@ void	ft_putendl_fd(char *str, int fd)
 }
 
 
+size_t	ft_list_size(t_program *program)
+{
+	t_token	*temp;
+	size_t		size;
 
-void	ft_execute(t_program *program)
+	temp = program->first;
+	size = 0;
+	while (temp != NULL)
+	{
+		temp = temp->next;
+		size += 1;
+	}
+	return (size);
+}
+
+
+void	ft_execute_built_in(t_program *program)
 {
 	t_token	*temp;
 	int		x;
@@ -908,7 +960,7 @@ void	ft_execute(t_program *program)
 		{
 			if (ft_strcmp(temp->token_str, "cd") == 0)
 			{
-				//printf("CD COMMAND FOUND\n");
+				printf("CD COMMAND FOUND\n");
 				call_cmd_cd(temp->next->token_str, program);
 			}
 			else if (ft_strcmp(temp->token_str, "echo") == 0)
@@ -937,14 +989,35 @@ void	ft_execute(t_program *program)
 				printf("EXIT COMMAND FOUND\n");
 			}
 		}
-		else 
-		{
-			//printf("EXEC PATH\n");
-			ft_path_exec(program);
-		}
 		temp = temp->next;
 	}
 }
+
+void	ft_execute(t_program *program)
+{
+	t_token	*temp;
+	int child_process_status; 
+	int		x;
+
+	temp = program->first;
+	x = 0;
+	if(temp->token_type == CMD && fork() == 0)
+	{
+		signal(SIGINT, ft_child_signals);
+		ft_execute_built_in(program);
+	}
+	else if (fork() == 0)
+	{
+		//printf("EXEC PATH\n");
+		ft_path_exec(program);
+	}
+	waitpid(-1, &child_process_status, 0); 
+	if (!WTERMSIG(child_process_status))
+		program->exit_status = child_process_status >> 8;
+
+}
+
+
 
 int	main(int ac, char **av, char **envp)
 {
@@ -965,21 +1038,8 @@ int	main(int ac, char **av, char **envp)
 	program->envp = NULL; 
 	program->envp = ft_init_envp_list(envp);
 	program->envp_origin = envp; 
-
-
-	//program->envp = NULL;
-
-	//program->envp = ft_store_envp(envp);
-	//int x = 0;
-	//while (program->envp[x])
-	//{
-	//	printf("%s\n", program->envp[x]);
-	//	x++;
-	//}
-	//char *path = ft_find_path(program);
-	// printf("PATH FOUND: %s\n", path);
-
-	//ft_create_paths(program);
+	//CONFUGURE SIGNALS
+	ft_config_signals();
 
 	while (1)
 	{

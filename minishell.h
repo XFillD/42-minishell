@@ -6,12 +6,13 @@
 /*   By: yalechin <yalechin@student.42prague.com    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/26 17:07:50 by yalechin          #+#    #+#             */
-/*   Updated: 2024/06/16 14:01:59 by yalechin         ###   ########.fr       */
+/*   Updated: 2024/07/07 16:11:59 by yalechin         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef MINISHELL_H
 # define MINISHELL_H
+# define _GNU_SOURCE
 # include "libft/libft.h"
 # include <dirent.h>
 # include <readline/history.h>
@@ -24,6 +25,8 @@
 # include <sys/types.h>
 # include <sys/wait.h>
 # include <unistd.h>
+
+extern int	exit_status;
 
 # define PIPE_T 1
 # define INPUT 2
