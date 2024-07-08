@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.h                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yalechin <yalechin@student.42prague.com    +#+  +:+       +#+        */
+/*   By: yana <yana@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/26 17:07:50 by yalechin          #+#    #+#             */
-/*   Updated: 2024/07/07 16:11:59 by yalechin         ###   ########.fr       */
+/*   Updated: 2024/07/08 15:46:31 by yana             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,7 +26,7 @@
 # include <sys/wait.h>
 # include <unistd.h>
 
-extern int	exit_status;
+int	exit_status;
 
 # define PIPE_T 1
 # define INPUT 2

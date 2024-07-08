@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yalechin <yalechin@student.42prague.com    +#+  +:+       +#+        */
+/*   By: yana <yana@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/08 10:31:55 by yalechin          #+#    #+#             */
-/*   Updated: 2024/07/07 18:01:01 by yalechin         ###   ########.fr       */
+/*   Updated: 2024/07/08 15:58:07 by yana             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,7 +41,7 @@ typedef struct s_program
 
 }					t_program;
 
-int	exit_status;
+extern int	exit_status;
 
 void	ft_child_signals(int signum)
 {
@@ -128,19 +128,44 @@ char	**ft_find_paths(t_program *program)
 	return (NULL); 
 }
 
+void ft_free_array(char **array)
+{
+	int	x;
+
+	x = 0;
+	if (!array)
+		return ;
+	while (array[x])
+	{
+		free(array[x]);
+		array[x] = NULL;
+		x += 1;
+	}
+	free(array);
+	array = NULL;
+}
+
+
+void	ft_exit_path(char **paths, char *cmd, int exit_status_current)
+{
+	if (cmd)
+		perror(cmd);
+	ft_free_array(paths);
+	if (!WIFSIGNALED(exit_status))
+		exit_status = exit_status_current;
+	exit(exit_status);
+}
+
 char *ft_create_paths(char *cmd, char **paths)
 {
 	int		x;
 	char	*bin;
 	char	*temp;
 
-
-
 	if(!paths)
 		return (NULL); 
 
 	x = 0;
-
 	while(paths[x])
 	{
 		temp = ft_strjoin(paths[x], "/"); 
@@ -183,27 +208,24 @@ void ft_path_exec(t_program *program)
 	if (ft_is_absolute_path(temp))
 	{
 		if (execve(bin, argv, program->envp_origin) == -1)
-		{
-			printf("EXEC ERROR IN PATH EXEC\n"); 
-		}
-			//exit_and_free_matrix(paths, temp->token_str[0], 127);
-		//exit_and_free_matrix(paths, NULL, EXIT_SUCCESS);
+			ft_exit_path(paths, program->first->token_str, 127);
+		ft_exit_path(paths, NULL, EXIT_SUCCESS);
 		return ;
 	}
 	bin = ft_create_paths(temp->token_str, paths);
 	if (bin == NULL)
 	{
 		//cmd_not_found(statement->argv[0]);
-		//exit_and_free_matrix(paths, NULL, 127);
+		ft_exit_path(paths, NULL, 127);
 		printf("ERROR IN BIN IN EXEC\n"); 
 	}
 	if (execve(bin, argv, program->envp_origin) == -1)
 	{
 		free(bin);
-		//exit_and_free_matrix(paths, statement->argv[0], 127);
+		ft_exit_path(paths, program->first->token_str, 127);
 	}
 	free(bin);
-	//exit_and_free_matrix(paths, NULL, EXIT_SUCCESS);
+	ft_exit_path(paths, NULL, EXIT_SUCCESS);
 }
 
 bool	streq(char *str1, char *str2)
@@ -500,18 +522,18 @@ t_token	*ft_tokenization(t_program *program)
 	t_token	*head;
 	t_token	*next;
 	int		x;
-	int		len;
-	bool	in_quote;
+	//int		len;
+	//bool	in_quote;
 
-	in_quote = false;
+	//in_quote = false;
 	prev = NULL;
 	head = NULL;
 	next = NULL;
 	x = 0;
-	len = 0;
+	//len = 0;
 	while (program->split_line[x])
 	{
-		len = 0;
+		//len = 0;
 		while (program->split_line[x] == ' ' && program->split_line[x])
 			x++;
 		next = new_token(program->split_line, &x);
@@ -913,7 +935,7 @@ int	cmd_cd(char *path, t_program *program)
 		update_oldpwd(&temp[0], program);
 		update_pwd(program);
 		//printf("cmd tadyyyyy\n");
-		//cmd_pwd();
+		cmd_pwd();
 		return (EXIT_SUCCESS);
 	}
 	return (print_perror_msg(path));
@@ -950,10 +972,10 @@ size_t	ft_list_size(t_program *program)
 void	ft_execute_built_in(t_program *program)
 {
 	t_token	*temp;
-	int		x;
+	//int		x;
 
 	temp = program->first;
-	x = 0;
+	//x = 0;
 	while (temp != NULL)
 	{
 		if (temp->token_type == CMD)
@@ -961,7 +983,7 @@ void	ft_execute_built_in(t_program *program)
 			if (ft_strcmp(temp->token_str, "cd") == 0)
 			{
 				printf("CD COMMAND FOUND\n");
-				call_cmd_cd(temp->next->token_str, program);
+				exit_status = call_cmd_cd(temp->next->token_str, program);
 			}
 			else if (ft_strcmp(temp->token_str, "echo") == 0)
 			{
@@ -970,7 +992,7 @@ void	ft_execute_built_in(t_program *program)
 			else if (ft_strcmp(temp->token_str, "pwd") == 0)
 			{
 				//printf("PWD COMMAND FOUND\n");
-				cmd_pwd();
+				exit_status = cmd_pwd();
 			}
 			else if (ft_strcmp(temp->token_str, "export") == 0)
 			{
@@ -997,23 +1019,30 @@ void	ft_execute(t_program *program)
 {
 	t_token	*temp;
 	int child_process_status; 
-	int		x;
+	//int		x;
 
 	temp = program->first;
-	x = 0;
-	if(temp->token_type == CMD && fork() == 0)
+	//x = 0;
+	if((temp->token_type == CMD))
 	{
-		signal(SIGINT, ft_child_signals);
-		ft_execute_built_in(program);
+		pid_t pid = fork();
+		if (pid == 0)
+        {
+            // Child process
+            signal(SIGINT, ft_child_signals);
+            if (temp->token_type == CMD)
+                ft_execute_built_in(program);
+		}
 	}
 	else if (fork() == 0)
 	{
 		//printf("EXEC PATH\n");
+		signal(SIGINT, ft_child_signals);
 		ft_path_exec(program);
 	}
 	waitpid(-1, &child_process_status, 0); 
 	if (!WTERMSIG(child_process_status))
-		program->exit_status = child_process_status >> 8;
+		program->exit_status = child_process_status >> 8; // =127 = command not found
 
 }
 
