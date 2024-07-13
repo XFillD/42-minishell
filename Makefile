@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: yalechin <yalechin@student.42prague.com    +#+  +:+       +#+         #
+#    By: fhauba <fhauba@student.42.fr>              +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/06/08 13:21:33 by yalechin          #+#    #+#              #
-#    Updated: 2024/06/09 10:23:35 by yalechin         ###   ########.fr        #
+#    Updated: 2024/07/13 15:58:40 by fhauba           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -15,7 +15,8 @@ NAME = minishell
 LIBFT = libft
 
 
-CFILES = minishell.c
+CFILES = 	minishell.c \
+			io_handling/pipes.c
 
 OFILES = $(CFILES:.c=.o)
 

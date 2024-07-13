@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.h                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yalechin <yalechin@student.42prague.com    +#+  +:+       +#+        */
+/*   By: fhauba <fhauba@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/26 17:07:50 by yalechin          #+#    #+#             */
-/*   Updated: 2024/06/16 14:01:59 by yalechin         ###   ########.fr       */
+/*   Updated: 2024/07/13 16:02:52 by fhauba           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,5 +42,39 @@
 # define RED_OUT '>'
 # define PIPE '|'
 # define D_SIGN '$'
+
+# define PIPE_ERR "minishell: pipe() failed"
+# define FORK_ERR "minishell: fork() failed"
+
+typedef struct s_envp
+{
+	char			*var_name;
+	char			*var_value;
+	struct s_envp	*next;
+}					t_envp;
+
+typedef struct s_token
+{
+	char			*token_str;
+	int				token_type;
+
+	struct s_token	*prev;
+	struct s_token	*next;
+
+}					t_token;
+
+typedef struct s_program
+{
+	char			*input;
+	char			*split_line;
+	t_token			*first;
+	char			**envp_origin;
+	t_envp *envp; 
+	//char			**paths;
+
+}					t_program;
+
+void execute_pipe(t_program *program);
+void ft_execute_complex(t_program *program);
 
 #endif

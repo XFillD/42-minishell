@@ -3,46 +3,16 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yalechin <yalechin@student.42prague.com    +#+  +:+       +#+        */
+/*   By: fhauba <fhauba@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/08 10:31:55 by yalechin          #+#    #+#             */
-/*   Updated: 2024/07/13 14:09:53 by yalechin         ###   ########.fr       */
+/*   Updated: 2024/07/13 16:39:25 by fhauba           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
 
 int	exit_status = 0;
-
-typedef struct s_envp
-{
-	char			*var_name;
-	char			*var_value;
-	struct s_envp	*next;
-}					t_envp;
-
-typedef struct s_token
-{
-	char			*token_str;
-	int				token_type;
-
-	struct s_token	*prev;
-	struct s_token	*next;
-
-}					t_token;
-
-typedef struct s_program
-{
-	char			*input;
-	char			*split_line;
-	t_token			*first;
-	char			**envp_origin;
-	t_envp *envp; 
-	//char			**paths;
-
-}					t_program;
-
-
 
 void	ft_child_signals(int signum)
 {
@@ -564,6 +534,20 @@ int	is_pipe(t_token *token)
 	return (ft_strcmp(token->token_str, "|") == 0);
 }
 
+//check if pipe in the list
+bool is_pipe_list(t_token *token)
+{
+	t_token *temp = token; 
+
+	while(temp)
+	{
+		if(is_pipe(temp))
+			return(true); 
+		temp = temp->next; 
+	}
+	return(false); 
+}
+
 // check if variable symbol
 int	is_variable(t_token *token)
 {
@@ -983,8 +967,14 @@ bool ft_check_for_special_list(t_program *program)
 void ft_execute_complex(t_program *program)
 {
 	t_token *temp = program->first;
+	printf("EXECUTE COMPLEX\n");
+	printf("TOKEN TYPE: %s\n", temp->token_str);
 	signal(SIGINT, ft_child_signals);
-	//if pipe
+	if(is_pipe_list(temp))
+	{
+		printf("PIPE COMMAND FOUND\n");
+		execute_pipe(program);
+	}
 	//if redirect
 	if(temp->token_type == STR)
 		ft_path_exec(program);
@@ -999,8 +989,12 @@ void	ft_execute(t_program *program)
 
 	temp = program->first;
 	//x = 0;
+	printf("EXECUTE\n");
+
 	if(temp->token_type == CMD && !ft_check_for_special_list(program))
 	{
+		printf("CMD COMMAND FOUND\n");
+		temp = temp->next;
 		ft_execute_built_in(program);
 		/*pid_t pid = fork();
 		if (pid == 0)
@@ -1013,6 +1007,7 @@ void	ft_execute(t_program *program)
 	}
 	else if (fork() == 0)
 	{
+		printf("fork");
 		//signal(SIGINT, ft_child_signals);
 		//ft_path_exec(program);
 		ft_execute_complex(program); 

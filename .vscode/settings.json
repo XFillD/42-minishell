@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "span": "c",
+        "minishell.h": "c"
+    }
+}
