@@ -3,14 +3,16 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yana <yana@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: yalechin <yalechin@student.42prague.com    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/08 10:31:55 by yalechin          #+#    #+#             */
-/*   Updated: 2024/07/08 15:58:07 by yana             ###   ########.fr       */
+/*   Updated: 2024/07/13 13:27:43 by yalechin         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
+
+int	exit_status = 0;
 
 typedef struct s_envp
 {
@@ -35,13 +37,12 @@ typedef struct s_program
 	char			*split_line;
 	t_token			*first;
 	char			**envp_origin;
-	int exit_status; 
 	t_envp *envp; 
 	//char			**paths;
 
 }					t_program;
 
-extern int	exit_status;
+
 
 void	ft_child_signals(int signum)
 {
@@ -784,56 +785,6 @@ t_envp	*ft_init_envp_list(char **envp)
 	return (head);
 }
 
-/*// find PATH in envp
-char	*ft_find_path(t_program *program)
-{
-	int	x;
-	int	len;
-
-	x = 0;
-	while (program->envp[x])
-	{
-		if (ft_strncmp(program->envp[x], "PATH=", 5) == 0)
-		{
-			len = ft_strlen(program->envp[x]) - 5;
-			return (ft_substr(program->envp[x], 5, len));
-		}
-		x++;
-	}
-	return (NULL);
-	// not sure what to return if path not found
-}
-
-// create paths from PATH - add / when necessary
-void	ft_create_paths(t_program *program)
-{
-	char	*path;
-	char	*temp;
-	int		x;
-	int		len;
-
-	x = 0;
-	path = ft_find_path(program);
-	program->paths = ft_split(path, ':');
-	while (program->paths[x])
-	{
-		len = ft_strlen(program->paths[x]) - 1;
-		if (program->paths[x][len] != '/')
-		{
-			temp = ft_strjoin(program->paths[x], "/");
-			free(program->paths[x]);
-			program->paths[x] = temp;
-		}
-		x++;
-	}
-	// testing print - delete later
-	// x = 0;
-	// while (program->paths[x])
-	// {
-	// 	printf("%s\n", program->paths[x]);
-	// 	x++;
-	// }
-}*/
 
 static int	print_perror_msg(char *path)
 {
@@ -969,50 +920,75 @@ size_t	ft_list_size(t_program *program)
 }
 
 
-void	ft_execute_built_in(t_program *program)
+bool	ft_execute_built_in(t_program *program)
 {
 	t_token	*temp;
 	//int		x;
 
 	temp = program->first;
 	//x = 0;
-	while (temp != NULL)
-	{
-		if (temp->token_type == CMD)
+	
+	if (ft_strcmp(temp->token_str, "cd") == 0)
 		{
-			if (ft_strcmp(temp->token_str, "cd") == 0)
-			{
-				printf("CD COMMAND FOUND\n");
-				exit_status = call_cmd_cd(temp->next->token_str, program);
-			}
-			else if (ft_strcmp(temp->token_str, "echo") == 0)
-			{
-				printf("ECHO COMMAND FOUND\n");
-			}
-			else if (ft_strcmp(temp->token_str, "pwd") == 0)
+			printf("CD COMMAND FOUND\n");
+			exit_status = call_cmd_cd(temp->next->token_str, program);
+		}
+	else if (ft_strcmp(temp->token_str, "echo") == 0)
+		{
+			printf("ECHO COMMAND FOUND\n");
+		}
+	else if (ft_strcmp(temp->token_str, "pwd") == 0)
 			{
 				//printf("PWD COMMAND FOUND\n");
 				exit_status = cmd_pwd();
 			}
-			else if (ft_strcmp(temp->token_str, "export") == 0)
+	else if (ft_strcmp(temp->token_str, "export") == 0)
 			{
 				printf("EXPORT COMMAND FOUND\n");
 			}
-			else if (ft_strcmp(temp->token_str, "unset") == 0)
+	else if (ft_strcmp(temp->token_str, "unset") == 0)
 			{
 				printf("UNSET COMMAND FOUND\n");
 			}
-			else if (ft_strcmp(temp->token_str, "env") == 0)
+	else if (ft_strcmp(temp->token_str, "env") == 0)
 			{
 				printf("ENV COMMAND FOUND\n");
 			}
-			else if (ft_strcmp(temp->token_str, "exit") == 0)
+	else if (ft_strcmp(temp->token_str, "exit") == 0)
 			{
 				printf("EXIT COMMAND FOUND\n");
-			}
-		}
-		temp = temp->next;
+			}	
+	else 
+		return (false); 
+	
+	return(true); 
+}
+
+bool ft_check_for_special_list(t_program *program)
+{
+	t_token *temp; 
+
+	temp = program->first; 
+
+	while(temp)
+	{
+		if(ft_check_for_special(temp->token_type))
+			return(true); 
+		temp = temp->next; 
 	}
+
+	return(false); 
+}
+
+void ft_execute_complex(t_program *program)
+{
+	t_token *temp = program->first;
+	signal(SIGINT, ft_child_signals);
+	//if pipe
+	//if redirect
+	if(temp->token_type == STR)
+		ft_path_exec(program);
+	exit(exit_status); 
 }
 
 void	ft_execute(t_program *program)
@@ -1023,27 +999,27 @@ void	ft_execute(t_program *program)
 
 	temp = program->first;
 	//x = 0;
-	if((temp->token_type == CMD))
+	if(temp->token_type == CMD && !ft_check_for_special_list(program))
 	{
-		pid_t pid = fork();
+		ft_execute_built_in(program);
+		/*pid_t pid = fork();
 		if (pid == 0)
         {
             // Child process
             signal(SIGINT, ft_child_signals);
             if (temp->token_type == CMD)
                 ft_execute_built_in(program);
-		}
+		}*/
 	}
 	else if (fork() == 0)
 	{
-		//printf("EXEC PATH\n");
-		signal(SIGINT, ft_child_signals);
-		ft_path_exec(program);
+		//signal(SIGINT, ft_child_signals);
+		//ft_path_exec(program);
+		ft_execute_complex(program); 
 	}
 	waitpid(-1, &child_process_status, 0); 
 	if (!WTERMSIG(child_process_status))
-		program->exit_status = child_process_status >> 8; // =127 = command not found
-
+		exit_status = child_process_status >> 8; // =127 = command not found
 }
 
 
@@ -1078,6 +1054,11 @@ int	main(int ac, char **av, char **envp)
 			break ;
 		}
 		add_history(program->input);
+		if (!program->input[0])
+		{
+			free(program->input);
+			continue ;
+		}
 		ft_check_quotes(program);
 		program->split_line = ft_prepare_line(program);
 		// printf("Final line: %s\n", program->split_line);

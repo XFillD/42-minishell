@@ -6,7 +6,7 @@
 #    By: yalechin <yalechin@student.42prague.com    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/06/08 13:21:33 by yalechin          #+#    #+#              #
-#    Updated: 2024/06/09 10:23:35 by yalechin         ###   ########.fr        #
+#    Updated: 2024/07/13 12:45:04 by yalechin         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -22,7 +22,7 @@ OFILES = $(CFILES:.c=.o)
 CC = cc
 HEAD =  -I$(LIBFT)
 CFLAGS = -Wall -Werror -Wextra -g 
-LFLAGS = -L$(LIBFT) -lft -lreadline
+LFLAGS = -L$(LIBFT) -lft -lreadline -lhistory
 
 all: lib $(NAME) 
 
