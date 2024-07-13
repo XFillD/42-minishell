@@ -6,11 +6,13 @@
 /*   By: yalechin <yalechin@student.42prague.com    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/08 10:31:55 by yalechin          #+#    #+#             */
-/*   Updated: 2024/06/23 20:21:05 by yalechin         ###   ########.fr       */
+/*   Updated: 2024/07/13 14:09:53 by yalechin         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
+
+int	exit_status = 0;
 
 typedef struct s_envp
 {
@@ -34,13 +36,198 @@ typedef struct s_program
 	char			*input;
 	char			*split_line;
 	t_token			*first;
-	//char			**envp;
+	char			**envp_origin;
 	t_envp *envp; 
 	//char			**paths;
 
 }					t_program;
 
 
+
+void	ft_child_signals(int signum)
+{
+	if (signum == SIGINT)
+	{
+		ft_putchar_fd('\n', STDOUT_FILENO);
+		exit_status = 130;
+		exit(130);
+	}
+}
+
+void	ft_s_handler(int signum)
+{
+	if (signum == SIGINT)
+	{
+		ft_putchar_fd('\n', STDOUT_FILENO);
+		rl_on_new_line();
+		rl_replace_line("", 0);
+		rl_redisplay();
+		exit_status = 130;
+	}
+}
+
+void ft_config_signals(void)
+{
+	struct sigaction s;
+
+	s.sa_handler = &ft_s_handler; 
+	s.sa_flags = SA_RESTART;
+    sigemptyset(&s.sa_mask);
+    sigaddset(&s.sa_mask, SIGINT);
+    sigaction(SIGINT, &s, NULL);
+    signal(SIGQUIT, SIG_IGN);
+
+}
+
+char **ft_token_list_to_array(t_token *token_list) {
+    size_t count = 0;
+    t_token *temp = token_list;
+
+    // Count the number of tokens in the linked list
+    while (temp) {
+        count++;
+        temp = temp->next;
+    }
+
+    // Allocate memory for the array of strings (plus one for the NULL terminator)
+    char **argv = malloc((count + 1) * sizeof(char *));
+    if (!argv) {
+        return NULL;
+    }
+
+    // Copy the tokens from the linked list to the array
+    size_t i = 0;
+    temp = token_list;
+    while (temp) {
+        argv[i] = strdup(temp->token_str);
+        if (!argv[i]) {
+            // Handle memory allocation failure
+            for (size_t j = 0; j < i; j++) {
+                free(argv[j]);
+            }
+            free(argv);
+            return NULL;
+        }
+        i++;
+        temp = temp->next;
+    }
+    argv[i] = NULL;  // Null-terminate the array
+
+    return argv;
+}
+
+char	**ft_find_paths(t_program *program)
+{
+	t_envp *temp = program->envp; 
+	
+	while (temp)
+	{
+		if ((ft_strncmp(temp->var_name, "PATH", 4)) == 0)
+			return (ft_split(temp->var_value, ':'));
+		temp = temp->next; 
+	}
+	return (NULL); 
+}
+
+void ft_free_array(char **array)
+{
+	int	x;
+
+	x = 0;
+	if (!array)
+		return ;
+	while (array[x])
+	{
+		free(array[x]);
+		array[x] = NULL;
+		x += 1;
+	}
+	free(array);
+	array = NULL;
+}
+
+
+void	ft_exit_path(char **paths, char *cmd, int exit_status_current)
+{
+	if (cmd)
+		perror(cmd);
+	ft_free_array(paths);
+	if (!WIFSIGNALED(exit_status))
+		exit_status = exit_status_current;
+	exit(exit_status);
+}
+
+char *ft_create_paths(char *cmd, char **paths)
+{
+	int		x;
+	char	*bin;
+	char	*temp;
+
+	if(!paths)
+		return (NULL); 
+
+	x = 0;
+	while(paths[x])
+	{
+		temp = ft_strjoin(paths[x], "/"); 
+		bin = ft_strjoin(temp, cmd); 
+		free(temp); 
+		if(access(bin, F_OK | X_OK) == 0)
+			return (bin); 
+		free(bin); 
+		x++; 
+	}
+	return (NULL); 
+}
+
+bool	ft_is_absolute_path(t_token *token)
+{
+	if (token->token_str[0] == '/')
+		return (true);
+	return (false);
+}
+
+//exit and free ? 
+
+void ft_path_exec(t_program *program)
+{
+
+	char *bin;
+	char **paths; 
+	t_token *temp = program->first; 
+
+	char **argv;
+
+    argv = ft_token_list_to_array(program->first);
+    if (!argv) {
+        perror("token_list_to_array");
+        exit(1);
+    }
+
+	bin = program->first->token_str; 
+	paths = ft_find_paths(program); 
+	if (ft_is_absolute_path(temp))
+	{
+		if (execve(bin, argv, program->envp_origin) == -1)
+			ft_exit_path(paths, program->first->token_str, 127);
+		ft_exit_path(paths, NULL, EXIT_SUCCESS);
+		return ;
+	}
+	bin = ft_create_paths(temp->token_str, paths);
+	if (bin == NULL)
+	{
+		//cmd_not_found(statement->argv[0]);
+		ft_exit_path(paths, NULL, 127);
+		printf("ERROR IN BIN IN EXEC\n"); 
+	}
+	if (execve(bin, argv, program->envp_origin) == -1)
+	{
+		free(bin);
+		ft_exit_path(paths, program->first->token_str, 127);
+	}
+	free(bin);
+	ft_exit_path(paths, NULL, EXIT_SUCCESS);
+}
 
 bool	streq(char *str1, char *str2)
 {
@@ -336,18 +523,18 @@ t_token	*ft_tokenization(t_program *program)
 	t_token	*head;
 	t_token	*next;
 	int		x;
-	int		len;
-	bool	in_quote;
+	//int		len;
+	//bool	in_quote;
 
-	in_quote = false;
+	//in_quote = false;
 	prev = NULL;
 	head = NULL;
 	next = NULL;
 	x = 0;
-	len = 0;
+	//len = 0;
 	while (program->split_line[x])
 	{
-		len = 0;
+		//len = 0;
 		while (program->split_line[x] == ' ' && program->split_line[x])
 			x++;
 		next = new_token(program->split_line, &x);
@@ -598,56 +785,6 @@ t_envp	*ft_init_envp_list(char **envp)
 	return (head);
 }
 
-/*// find PATH in envp
-char	*ft_find_path(t_program *program)
-{
-	int	x;
-	int	len;
-
-	x = 0;
-	while (program->envp[x])
-	{
-		if (ft_strncmp(program->envp[x], "PATH=", 5) == 0)
-		{
-			len = ft_strlen(program->envp[x]) - 5;
-			return (ft_substr(program->envp[x], 5, len));
-		}
-		x++;
-	}
-	return (NULL);
-	// not sure what to return if path not found
-}
-
-// create paths from PATH - add / when necessary
-void	ft_create_paths(t_program *program)
-{
-	char	*path;
-	char	*temp;
-	int		x;
-	int		len;
-
-	x = 0;
-	path = ft_find_path(program);
-	program->paths = ft_split(path, ':');
-	while (program->paths[x])
-	{
-		len = ft_strlen(program->paths[x]) - 1;
-		if (program->paths[x][len] != '/')
-		{
-			temp = ft_strjoin(program->paths[x], "/");
-			free(program->paths[x]);
-			program->paths[x] = temp;
-		}
-		x++;
-	}
-	// testing print - delete later
-	// x = 0;
-	// while (program->paths[x])
-	// {
-	// 	printf("%s\n", program->paths[x]);
-	// 	x++;
-	// }
-}*/
 
 static int	print_perror_msg(char *path)
 {
@@ -767,58 +904,128 @@ void	ft_putendl_fd(char *str, int fd)
 }
 
 
+size_t	ft_list_size(t_program *program)
+{
+	t_token	*temp;
+	size_t		size;
+
+	temp = program->first;
+	size = 0;
+	while (temp != NULL)
+	{
+		temp = temp->next;
+		size += 1;
+	}
+	return (size);
+}
+
+
+bool	ft_execute_built_in(t_program *program)
+{
+	t_token	*temp;
+	//int		x;
+
+	temp = program->first;
+	//x = 0;
+	
+	if (ft_strcmp(temp->token_str, "cd") == 0)
+		{
+			printf("CD COMMAND FOUND\n");
+			exit_status = call_cmd_cd(temp->next->token_str, program);
+		}
+	else if (ft_strcmp(temp->token_str, "echo") == 0)
+		{
+			printf("ECHO COMMAND FOUND\n");
+		}
+	else if (ft_strcmp(temp->token_str, "pwd") == 0)
+			{
+				//printf("PWD COMMAND FOUND\n");
+				exit_status = cmd_pwd();
+			}
+	else if (ft_strcmp(temp->token_str, "export") == 0)
+			{
+				printf("EXPORT COMMAND FOUND\n");
+			}
+	else if (ft_strcmp(temp->token_str, "unset") == 0)
+			{
+				printf("UNSET COMMAND FOUND\n");
+			}
+	else if (ft_strcmp(temp->token_str, "env") == 0)
+			{
+				printf("ENV COMMAND FOUND\n");
+			}
+	else if (ft_strcmp(temp->token_str, "exit") == 0)
+			{
+				printf("EXIT COMMAND FOUND\n");
+			}	
+	else 
+		return (false); 
+	
+	return(true); 
+}
+
+bool ft_check_for_special_list(t_program *program)
+{
+	t_token *temp; 
+
+	temp = program->first; 
+
+	while(temp)
+	{
+		if(ft_check_for_special(temp->token_type))
+			return(true); 
+		temp = temp->next; 
+	}
+
+	return(false); 
+}
+
+void ft_execute_complex(t_program *program)
+{
+	t_token *temp = program->first;
+	signal(SIGINT, ft_child_signals);
+	//if pipe
+	//if redirect
+	if(temp->token_type == STR)
+		ft_path_exec(program);
+	exit(exit_status); 
+}
 
 void	ft_execute(t_program *program)
 {
 	t_token	*temp;
-	int		x;
+	int child_process_status; 
+	//int		x;
 
 	temp = program->first;
-	x = 0;
-	while (temp != NULL)
+	//x = 0;
+	if(temp->token_type == CMD && !ft_check_for_special_list(program))
 	{
-		if (temp->token_type == CMD)
-		{
-			if (ft_strcmp(temp->token_str, "cd") == 0)
-			{
-				//printf("CD COMMAND FOUND\n");
-				call_cmd_cd(temp->next->token_str, program);
-			}
-			else if (ft_strcmp(temp->token_str, "echo") == 0)
-			{
-				printf("ECHO COMMAND FOUND\n");
-			}
-			else if (ft_strcmp(temp->token_str, "pwd") == 0)
-			{
-				//printf("PWD COMMAND FOUND\n");
-				cmd_pwd();
-			}
-			else if (ft_strcmp(temp->token_str, "export") == 0)
-			{
-				printf("EXPORT COMMAND FOUND\n");
-			}
-			else if (ft_strcmp(temp->token_str, "unset") == 0)
-			{
-				printf("UNSET COMMAND FOUND\n");
-			}
-			else if (ft_strcmp(temp->token_str, "env") == 0)
-			{
-				printf("ENV COMMAND FOUND\n");
-			}
-			else if (ft_strcmp(temp->token_str, "exit") == 0)
-			{
-				printf("EXIT COMMAND FOUND\n");
-			}
-		}
-		temp = temp->next;
+		ft_execute_built_in(program);
+		/*pid_t pid = fork();
+		if (pid == 0)
+        {
+            // Child process
+            signal(SIGINT, ft_child_signals);
+            if (temp->token_type == CMD)
+                ft_execute_built_in(program);
+		}*/
 	}
+	else if (fork() == 0)
+	{
+		//signal(SIGINT, ft_child_signals);
+		//ft_path_exec(program);
+		ft_execute_complex(program); 
+	}
+	waitpid(-1, &child_process_status, 0); 
+	if (!WTERMSIG(child_process_status))
+		exit_status = child_process_status >> 8; // =127 = command not found
 }
+
+
 
 int	main(int ac, char **av, char **envp)
 {
-	(void)ac;
-	(void)av;
-	(void)envp; 
 	t_program *program;
 
 	if (ac != 1 || av[1])
@@ -833,23 +1040,11 @@ int	main(int ac, char **av, char **envp)
 	program->input = NULL;
 	program->split_line = NULL; 
 	program->first = NULL; 
-	program->envp = NULL; 
+	program->envp = NULL;
 	program->envp = ft_init_envp_list(envp);
-
-
-	//program->envp = NULL;
-
-	//program->envp = ft_store_envp(envp);
-	//int x = 0;
-	//while (program->envp[x])
-	//{
-	//	printf("%s\n", program->envp[x]);
-	//	x++;
-	//}
-	//char *path = ft_find_path(program);
-	// printf("PATH FOUND: %s\n", path);
-
-	//ft_create_paths(program);
+	program->envp_origin = envp; 
+	//CONFUGURE SIGNALS
+	ft_config_signals();
 
 	while (1)
 	{
@@ -859,6 +1054,11 @@ int	main(int ac, char **av, char **envp)
 			break ;
 		}
 		add_history(program->input);
+		if (!program->input[0])
+		{
+			free(program->input);
+			continue ;
+		}
 		ft_check_quotes(program);
 		program->split_line = ft_prepare_line(program);
 		// printf("Final line: %s\n", program->split_line);
