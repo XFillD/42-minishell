@@ -6,7 +6,7 @@
 /*   By: yalechin <yalechin@student.42prague.com    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/08 10:31:55 by yalechin          #+#    #+#             */
-/*   Updated: 2024/07/13 14:09:53 by yalechin         ###   ########.fr       */
+/*   Updated: 2024/07/14 14:12:40 by yalechin         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,10 +38,153 @@ typedef struct s_program
 	t_token			*first;
 	char			**envp_origin;
 	t_envp *envp; 
-	//char			**paths;
 
 }					t_program;
+bool	is_onstr(const char *str, int ch)
+{
+	size_t	i;
 
+	if (!str)
+		return (NULL);
+	i = 0;
+	while (str[i])
+	{
+		if (str[i] == ch)
+			return (true);
+		i += 1;
+	}
+	return (false);
+}
+
+static size_t	remove_quotes_size(char	*parsed)
+{
+	size_t	i;
+	size_t	size;
+	char	quotes;
+
+	i = 0;
+	size = 0;
+	while (parsed[i])
+	{
+		while (parsed[i] && !is_onstr(QUOTES, parsed[i]))
+		{
+			i += 1;
+			size += 1;
+		}
+		if (!parsed[i])
+			break ;
+		quotes = parsed[i++];
+		while (parsed[i] && parsed[i] != quotes)
+		{
+			i += 1;
+			size += 1;
+		}
+		quotes = 0;
+	}
+	return (size);
+}
+
+char *remove_quotes(char *parsed)
+{
+    size_t i = 0, j = 0;
+    char quotes = '\0';
+    char *unquoted_parsed = malloc((remove_quotes_size(parsed) + 1) * sizeof(char));
+
+    if (!unquoted_parsed)
+        return NULL; // Handle malloc failure
+
+    while (parsed[i])
+    {
+        // Copy characters until a quote character is found
+        while (parsed[i] && !is_onstr("'", parsed[i]) && !is_onstr("\"", parsed[i]))
+            unquoted_parsed[j++] = parsed[i++];
+
+        // If end of string, break out of loop
+        if (!parsed[i])
+            break;
+
+        // Store the quote character and skip it
+        quotes = parsed[i++];
+        
+        // Copy characters until the matching quote character is found
+        while (parsed[i] && parsed[i] != quotes)
+            unquoted_parsed[j++] = parsed[i++];
+
+        // Skip the closing quote character
+        if (parsed[i])
+            i++;
+
+        // Reset quotes for the next iteration
+        quotes = '\0';
+    }
+
+    // Null-terminate the new string
+    unquoted_parsed[j] = '\0';
+    
+    // Free the original parsed string
+    free(parsed);
+
+    return unquoted_parsed;
+}
+
+// compare strings
+int	ft_strcmp(char *s1, char *s2)
+{
+	int	x;
+
+	x = 0;
+	while (s1[x])
+	{
+		if (s1[x] != s2[x])
+			return (s1[x] - s2[x]);
+		x++;
+	}
+	return (0);
+}
+
+
+int	ft_exec_echo(t_token *token, bool has_n)
+{
+	
+	int x = 0; 
+
+
+	while (token->next->token_str[x]) 
+	{
+		ft_putchar_fd(token->next->token_str[x], 1);
+		x++; 
+	}
+	if (!has_n)
+		ft_putchar_fd('\n', 1);
+	return (EXIT_SUCCESS);
+}
+
+static int	ft_echo(t_token *token)
+{
+
+	bool		has_n;
+
+
+	has_n = false;
+	if (token->next)
+	{
+		if (ft_strcmp(token->next->token_str, "-n") == 0)
+		has_n = true; 
+	}
+
+	ft_exec_echo(token, has_n);
+	/*temp = temp->next;
+	while (temp != NULL && temp->argc > 2)
+	{
+		cmd_echo(temp, false);
+		if (temp->operator == PIPE)
+			break ;
+		temp = temp->next;
+	}
+	if (!has_n)
+		ft_putchar_fd('\n', STDOUT_FILENO);*/
+	return (EXIT_SUCCESS);
+}
 
 
 void	ft_child_signals(int signum)
@@ -245,20 +388,7 @@ bool	streq(char *str1, char *str2)
 	return (true);
 }
 
-// compare strings
-int	ft_strcmp(char *s1, char *s2)
-{
-	int	x;
 
-	x = 0;
-	while (s1[x])
-	{
-		if (s1[x] != s2[x])
-			return (s1[x] - s2[x]);
-		x++;
-	}
-	return (0);
-}
 
 // check if character is in the string
 int	ft_is_in_str(const char *str, int ch)
@@ -311,8 +441,8 @@ bool	ft_check_for_special(int c)
 		return (true);
 	if (c == RED_OUT)
 		return (true);
-	if (c == D_SIGN)
-		return (true);
+	//if (c == D_SIGN)
+		//return (true);
 	if (c == PIPE)
 		return (true);
 	return (false);
@@ -920,6 +1050,97 @@ size_t	ft_list_size(t_program *program)
 }
 
 
+
+
+void	ft_exit(t_program *program)
+{
+	//ft_putendl_fd("exit", STDOUT_FILENO);
+	if(program->envp)
+	{
+		while(program->envp)
+		{
+			free(program->envp);
+			program->envp = program->envp->next; 
+		}
+	}
+	if (program->first)
+		while(program->first)
+		{
+			free(program->first);
+			program->first = program->first->next;
+		}
+	free (program);
+	exit_status = 0;
+	
+	exit(exit_status);
+}
+
+int	ft_env(t_program *program)
+{
+	t_envp	*temp;
+
+	temp = program->envp;
+	while (temp != NULL)
+	{
+		//if (temp->is_exported)
+		printf("%s=%s\n", temp->var_name, temp->var_value);
+		temp = temp->next;
+	}
+	return (EXIT_SUCCESS);
+}
+
+
+static void	invalid_identifier(char *var_name)
+{
+	ft_putstr_fd("minishell: unset: `", STDERR_FILENO);
+	ft_putstr_fd(var_name, STDERR_FILENO);
+	ft_putendl_fd("\': not a valid identifier", STDERR_FILENO);
+}
+
+int	unset_var2(char *var_name, t_envp *head)
+{
+	
+	t_envp	*next_node;
+
+	printf("Attempting to unset variable: %s\n", var_name);
+
+
+
+	if (ft_strchr(var_name, '='))
+	{
+		invalid_identifier(var_name);
+		return (EXIT_FAILURE);
+	}
+	while (head && head->next != NULL)
+	{
+		if (streq(var_name, head->next->var_name))
+		{
+			next_node = head->next->next;
+			printf("NEXT IS %s", head->next->next->var_name);
+			free(head->next->var_name);
+			free(head->next->var_value);
+			free(head->next);
+			head->next = next_node;
+			break ;
+		}
+		head = head->next;
+	}
+	return (EXIT_SUCCESS);
+}
+
+int	ft_unset(t_token *token, t_envp *head)
+{
+	
+	while (token)
+	{
+		unset_var2(token->token_str, head);
+		token = token->next; 
+	}
+
+	return (EXIT_SUCCESS);
+}
+
+
 bool	ft_execute_built_in(t_program *program)
 {
 	t_token	*temp;
@@ -929,35 +1150,40 @@ bool	ft_execute_built_in(t_program *program)
 	//x = 0;
 	
 	if (ft_strcmp(temp->token_str, "cd") == 0)
-		{
-			printf("CD COMMAND FOUND\n");
-			exit_status = call_cmd_cd(temp->next->token_str, program);
-		}
+	{
+		//printf("CD COMMAND FOUND\n");
+		exit_status = call_cmd_cd(temp->next->token_str, program);
+	}
 	else if (ft_strcmp(temp->token_str, "echo") == 0)
-		{
-			printf("ECHO COMMAND FOUND\n");
-		}
+	{
+		//printf("ECHO COMMAND FOUND\n");
+		exit_status = ft_echo(temp);
+	}
 	else if (ft_strcmp(temp->token_str, "pwd") == 0)
-			{
-				//printf("PWD COMMAND FOUND\n");
-				exit_status = cmd_pwd();
-			}
+	{
+		//printf("PWD COMMAND FOUND\n");
+		exit_status = cmd_pwd();
+	}
 	else if (ft_strcmp(temp->token_str, "export") == 0)
-			{
-				printf("EXPORT COMMAND FOUND\n");
-			}
+	{
+		printf("EXPORT COMMAND FOUND\n");
+		//exit_status = ft_export(temp);
+	}
 	else if (ft_strcmp(temp->token_str, "unset") == 0)
-			{
-				printf("UNSET COMMAND FOUND\n");
-			}
+	{
+		printf("UNSET COMMAND FOUND\n");
+		exit_status = ft_unset(temp->next, program->envp);
+	}
 	else if (ft_strcmp(temp->token_str, "env") == 0)
-			{
-				printf("ENV COMMAND FOUND\n");
-			}
+	{
+		printf("ENV COMMAND FOUND\n");
+		exit_status = ft_env(program);
+	}
 	else if (ft_strcmp(temp->token_str, "exit") == 0)
-			{
-				printf("EXIT COMMAND FOUND\n");
-			}	
+	{
+		//printf("EXIT COMMAND FOUND\n");
+		ft_exit(program);
+	}	
 	else 
 		return (false); 
 	
@@ -1024,6 +1250,215 @@ void	ft_execute(t_program *program)
 
 
 
+static long long	ft_digits(long long n)
+{
+	long long	digits;
+
+	digits = 0;
+	if (n <= 0)
+		digits += 1;
+	while (n != 0)
+	{
+		n /= 10;
+		digits += 1;
+	}
+	return (digits);
+}
+
+char	*ft_lltoa(long long n)
+{
+	long long	digits;
+	int			signal;
+	char		*result;
+
+	digits = ft_digits(n);
+	signal = 1;
+	result = malloc((digits + 1) * sizeof(char));
+	if (!result)
+		return (NULL);
+	result[digits--] = '\0';
+	if (n < 0)
+	{
+		signal = -1;
+		result[0] = '-';
+	}
+	else if (n == 0)
+		result[0] = '0';
+	while (n != 0)
+	{
+		result[digits--] = (n % 10 * signal) + '0';
+		n /= 10;
+	}
+	return (result);
+}
+
+size_t	exit_status_size(void)
+{
+	char	*exit_status2;
+	size_t	size;
+
+	exit_status2 = ft_lltoa(exit_status);
+	size = ft_strlen(exit_status2);
+	free(exit_status2);
+	return (size);
+}
+
+void	init_vars(size_t *i, size_t *size, bool *in_quotes, bool *in_dquotes)
+{
+	*i = 0;
+	*size = 0;
+	*in_quotes = false;
+	*in_dquotes = false;
+}
+
+static inline bool	single_dollar(char *input_at_i)
+{
+	return ((!input_at_i[1]
+			|| input_at_i[1] == ' '
+			|| input_at_i[1] == '\"'));
+}
+
+size_t	expand_size(char *input_at_i, size_t *i, t_program *program)
+{
+	size_t	var_size;
+	char	*var_name;
+	char	*var_value;
+
+	*i += 1;
+	if (single_dollar(input_at_i))
+		return (1);
+	var_size = 0;
+	while (input_at_i[var_size + 1]
+		&& input_at_i[var_size + 1] != ' '
+		&& !is_onstr(QUOTES, input_at_i[var_size + 1])
+		&& input_at_i[var_size + 1] != '$')
+				var_size += 1;
+	if (var_size == 0)
+		return (0);
+	var_name = ft_substr(input_at_i, 1, var_size);
+	var_value = get_fromvlst(var_name, &program->envp);
+	free(var_name);
+	*i += var_size;
+	if (!var_value)
+		return (0);
+	return (ft_strlen(var_value));
+}
+
+int	expanded_size(char *input, t_program *program)
+{
+	size_t	i;
+	size_t	size;
+	bool	in_quotes;
+	bool	in_dquotes;
+
+	init_vars(&i, &size, &in_quotes, &in_dquotes);
+	while (input[i])
+	{
+		if (input[i] == '\"' && !in_quotes)
+			in_dquotes = !in_dquotes;
+		if (input[i] == '\'' && !in_dquotes)
+			in_quotes = !in_quotes;
+		if ((input[i] == '$' && input[i + 1] == '?') && !in_quotes)
+		{
+			size += exit_status_size() - 1;
+			i += 1;
+		}
+		else if (input[i] == '$' && !in_quotes)
+			size += expand_size(&(input[i]), &i, program) - 1;
+		else
+			i += 1;
+		size += 1;
+	}
+	return (size);
+}
+
+size_t	expand_exit_status(char *expanded_input_at_i, size_t *i)
+{
+	char	*exit_status2;
+	size_t	j;
+
+	*i += 2;
+	exit_status2 = ft_lltoa(exit_status);
+	j = 0;
+	while (exit_status2[j])
+	{
+		expanded_input_at_i[j] = exit_status2[j];
+		j += 1;
+	}
+	free(exit_status2);
+	return (j);
+}
+
+char	*get_varvalue_fromvlst(char *var_name, t_program *program)
+{
+	char	*var_value;
+
+	var_value = get_fromvlst(var_name, &program->envp);
+	free(var_name);
+	return (var_value);
+}
+
+size_t	expand_variable(char *expanded_input_at_i, char *input,
+	size_t *i, t_program *program)
+{
+	char	*var_value;
+	size_t	size;
+	size_t	j;
+	size_t	k;
+
+	size = 0;
+	j = 0;
+	k = 0;
+	*i += 1;
+	if (!input[*i] || input[*i] == ' ' || input[*i] == '\"')
+	{
+		expanded_input_at_i[0] = '$';
+		return (1);
+	}
+	while (input[*i + size] && input[*i + size] != ' '
+		&& input[*i + size] != '\"' && !is_onstr(QUOTES, input[*i + size])
+		&& input[*i + size] != '$')
+		size += 1;
+	var_value = get_varvalue_fromvlst(ft_substr(input, *i, size), program);
+	*i += size;
+	if (!var_value)
+		return (0);
+	while (var_value[k])
+		expanded_input_at_i[j++] = var_value[k++];
+	return (j);
+}
+
+char	*ft_expander(char *input, t_program *program)
+{
+	size_t	i;
+	size_t	j;
+	bool	in_quotes;
+	bool	in_dquotes;
+	char	*expanded_input;
+
+	init_vars(&i, &j, &in_quotes, &in_dquotes);
+	expanded_input = malloc((expanded_size(input, program) + 1) * sizeof(char));
+	while (input[i])
+	{
+		if (input[i] == '\"' && !in_quotes)
+			in_dquotes = !in_dquotes;
+		if (input[i] == '\'' && !in_dquotes)
+			in_quotes = !in_quotes;
+		if (input[i] == '$' && input[i + 1] == '?' && !in_quotes)
+			j += expand_exit_status(&(expanded_input[j]), &i);
+		else if (input[i] && input[i] == '$' && !in_quotes)
+		{
+			printf("HERE IS %c\n", input[i]);
+			j += expand_variable(&(expanded_input[j]), input, &i, program);
+		}
+		else
+			expanded_input[j++] = input[i++];
+	}
+	expanded_input[j] = '\0';
+	free(input);
+	return (expanded_input);
+}
+
 int	main(int ac, char **av, char **envp)
 {
 	t_program *program;
@@ -1059,9 +1494,15 @@ int	main(int ac, char **av, char **envp)
 			free(program->input);
 			continue ;
 		}
-		ft_check_quotes(program);
+		if (ft_check_quotes(program))
+			break ;
 		program->split_line = ft_prepare_line(program);
-		// printf("Final line: %s\n", program->split_line);
+		//printf("Split line: %s\n", program->split_line);
+		program->split_line = ft_expander(program->split_line, program); 
+		//printf("Vars line: %s\n", program->split_line);
+		program->split_line = remove_quotes(program->split_line); 
+		//printf("Final line: %s\n", program->split_line);
+		
 		program->first = ft_tokenization(program);
 
 		//t_token *temp = program->first;
@@ -1073,6 +1514,7 @@ int	main(int ac, char **av, char **envp)
 				temp->token_type);
 			temp = temp->next;
 		}
+
 
 		if (ft_check_tokens(program))
 			printf("ALL TOKEN GOOD!\n");*/

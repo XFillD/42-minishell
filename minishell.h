@@ -6,7 +6,7 @@
 /*   By: yalechin <yalechin@student.42prague.com    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/26 17:07:50 by yalechin          #+#    #+#             */
-/*   Updated: 2024/06/16 14:01:59 by yalechin         ###   ########.fr       */
+/*   Updated: 2024/07/13 19:08:32 by yalechin         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,6 +37,7 @@
 
 # define DOUBLE_QUOTE '\"'
 # define SINGLE_QUOTE '\''
+# define QUOTES "\"\'"
 
 # define RED_IN '<'
 # define RED_OUT '>'
