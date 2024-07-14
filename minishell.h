@@ -6,7 +6,7 @@
 /*   By: fhauba <fhauba@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/26 17:07:50 by yalechin          #+#    #+#             */
-/*   Updated: 2024/07/13 16:02:52 by fhauba           ###   ########.fr       */
+/*   Updated: 2024/07/14 12:10:09 by fhauba           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,7 +74,7 @@ typedef struct s_program
 
 }					t_program;
 
-void execute_pipe(t_program *program);
-void ft_execute_complex(t_program *program);
+void execute_pipe(t_program *program, t_token *token);
+void ft_execute_complex(t_program *program, t_token *token);
 
 #endif

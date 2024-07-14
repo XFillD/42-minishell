@@ -6,7 +6,7 @@
 /*   By: fhauba <fhauba@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/08 10:31:55 by yalechin          #+#    #+#             */
-/*   Updated: 2024/07/13 16:39:25 by fhauba           ###   ########.fr       */
+/*   Updated: 2024/07/14 14:01:29 by fhauba           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -159,31 +159,29 @@ bool	ft_is_absolute_path(t_token *token)
 
 //exit and free ? 
 
-void ft_path_exec(t_program *program)
+void ft_path_exec(t_program *program, t_token *token)
 {
-
 	char *bin;
 	char **paths; 
-	t_token *temp = program->first; 
 
 	char **argv;
 
-    argv = ft_token_list_to_array(program->first);
+    argv = ft_token_list_to_array(token);
     if (!argv) {
         perror("token_list_to_array");
         exit(1);
     }
 
-	bin = program->first->token_str; 
+	bin = token->token_str; 
 	paths = ft_find_paths(program); 
-	if (ft_is_absolute_path(temp))
+	if (ft_is_absolute_path(token))
 	{
 		if (execve(bin, argv, program->envp_origin) == -1)
-			ft_exit_path(paths, program->first->token_str, 127);
+			ft_exit_path(paths, token->token_str, 127);
 		ft_exit_path(paths, NULL, EXIT_SUCCESS);
 		return ;
 	}
-	bin = ft_create_paths(temp->token_str, paths);
+	bin = ft_create_paths(token->token_str, paths);
 	if (bin == NULL)
 	{
 		//cmd_not_found(statement->argv[0]);
@@ -193,7 +191,7 @@ void ft_path_exec(t_program *program)
 	if (execve(bin, argv, program->envp_origin) == -1)
 	{
 		free(bin);
-		ft_exit_path(paths, program->first->token_str, 127);
+		ft_exit_path(paths, token->token_str, 127);
 	}
 	free(bin);
 	ft_exit_path(paths, NULL, EXIT_SUCCESS);
@@ -542,7 +540,10 @@ bool is_pipe_list(t_token *token)
 	while(temp)
 	{
 		if(is_pipe(temp))
+		{
+			temp->token_type = PIPE;
 			return(true); 
+		}
 		temp = temp->next; 
 	}
 	return(false); 
@@ -964,21 +965,26 @@ bool ft_check_for_special_list(t_program *program)
 	return(false); 
 }
 
-void ft_execute_complex(t_program *program)
+void ft_execute_complex(t_program *program, t_token *temp)
 {
-	t_token *temp = program->first;
-	printf("EXECUTE COMPLEX\n");
-	printf("TOKEN TYPE: %s\n", temp->token_str);
-	signal(SIGINT, ft_child_signals);
-	if(is_pipe_list(temp))
+    printf("Starting ft_execute_complex\n"); // Přidáno pro sledování začátku funkce
+	is_pipe_list(temp);
+    printf("EXECUTE COMPLEX\n");
+    printf("TOKEN TYPE: %s\n", temp->token_str);
+    signal(SIGINT, ft_child_signals);
+    if(temp->token_type == PIPE)
+    {
+        printf("PIPE COMMAND FOUND\n");
+		execute_pipe(program, temp);
+    }
+    //if redirect
+    if(temp->token_type == STR)
 	{
-		printf("PIPE COMMAND FOUND\n");
-		execute_pipe(program);
+		printf("STR COMMAND FOUND\n");
+        ft_path_exec(program, temp);
 	}
-	//if redirect
-	if(temp->token_type == STR)
-		ft_path_exec(program);
-	exit(exit_status); 
+    printf("Ending ft_execute_complex with exit status: %d\n", exit_status); // Přidáno pro sledování konce funkce
+    exit(exit_status); 
 }
 
 void	ft_execute(t_program *program)
@@ -1010,7 +1016,7 @@ void	ft_execute(t_program *program)
 		printf("fork");
 		//signal(SIGINT, ft_child_signals);
 		//ft_path_exec(program);
-		ft_execute_complex(program); 
+		ft_execute_complex(program, temp); 
 	}
 	waitpid(-1, &child_process_status, 0); 
 	if (!WTERMSIG(child_process_status))
